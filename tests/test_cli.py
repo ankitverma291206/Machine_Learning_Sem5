@@ -64,6 +64,22 @@ def test_train_then_predict_roundtrip(tmp_path):
     assert accuracy > 0.97                                                         # and they are nearly all right
 
 
+def test_predict_localize_adds_span_diagnostic(tmp_path):
+    """CHECK: raw span data can return an actionable location alongside a prediction."""
+    df = generate_sample_data(n_rows=240, missing_fraction=0)
+    source = tmp_path / "telemetry.csv"
+    df.to_csv(source, index=False)
+    out = tmp_path / "run"
+    main(["train", "--data", str(source), "--config", str(REPO_ROOT / "configs" / "sample.yaml"),
+          "--out", str(out)])
+    predictions = tmp_path / "predictions.csv"
+    main(["predict", "--model", str(out / "model.joblib"), "--data", str(source),
+          "--output", str(predictions), "--localize"])
+    result = pd.read_csv(predictions)
+    assert {"suspected_span", "localization_score"} <= set(result.columns)
+    assert result.loc[result["prediction"] == "not healthy", "suspected_span"].notna().all()
+
+
 def test_bad_input_exits_with_code_2(tmp_path, capsys):
     """CHECK: a mistake like a wrong column name ends with a short 'error:' message and exit code 2."""
     csv = tmp_path / "x.csv"

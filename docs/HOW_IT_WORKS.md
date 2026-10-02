@@ -142,6 +142,15 @@ light), and that shows up as strongly negative numbers. A perfectly healthy link
 So this link becomes a single dot at **(−1.0, −3.1)** on a chart. Every link and every time slot is
 one dot. Healthy links cluster near the centre; sick ones drift towards the bottom-left.
 
+### Localization: returning from a link alarm to a span
+
+Summing is useful for prediction, but it hides *where* the deviation occurred. When you run
+`predict --localize` with these raw per-span settings, `linkfail` revisits the same per-span
+differences and reports the span with the largest negative deviation (the largest adverse distance
+from its target) as `suspected_span`. `localization_score` is that deviation's size in the original
+measurement units. This is a transparent diagnostic ranking, not proof of root cause: inspect the
+telemetry and use network context before dispatching work.
+
 > **In the code:** `data.py → prepare_dataset()` (the loop under "Step 5"). In the settings file this
 > is the `derived_features` section; the `*` wildcard means "all 19 span columns".
 

@@ -1,4 +1,6 @@
-# linkfail — link-failure prediction for optical networks
+# Link Failure Prediction and Localization in Cloud Scale Networks using Supervised Learning
+
+*An implementation inspired by Zahra Bakhtiari's Stanford work, packaged as `linkfail`.*
 
 [![tests](https://github.com/YOUR-USERNAME/linkfail/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR-USERNAME/linkfail/actions)
 ![python](https://img.shields.io/badge/python-3.10%2B-blue)
@@ -72,10 +74,15 @@ More templates are in [`configs/`](configs). Supported formats: `.csv`, `.tsv`, 
 
 ```bash
 python -m linkfail predict --model runs/exp1/model.joblib --data new_links.csv --output predictions.csv
+
+# When the model used raw per-span derived features, also identify the most adverse span.
+python -m linkfail predict --model runs/exp3/model.joblib --data new_telemetry.csv \
+       --output predictions.csv --localize
 ```
 
 The output has a `row_index`, an `unhealthy_score` (0–1) and a `prediction` per row. The new file
-does not need a label column.
+does not need a label column. With `--localize`, raw per-span configurations add `suspected_span`
+and `localization_score`: the span with the largest adverse baseline deviation for each alerted row.
 
 ## What you get after training
 
@@ -180,7 +187,9 @@ CI runs the tests on Python 3.10–3.12 for every push (`.github/workflows/ci.ym
 
 - Linear models only. If your data is not roughly linearly separable, add a non-linear model
   (the paper suggests an RBF-kernel SVM as future work).
-- Binary task (healthy vs not healthy). Failure *localisation* from the paper's title is not implemented.
+- Binary task (healthy vs not healthy). Localization ranks the span with the strongest adverse
+  configured baseline deviation; it is a diagnostic heuristic, not a separately validated
+  root-cause classifier.
 - Rows are treated as independent; there is no time-series modelling.
 
 ## Reference

@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 
 from linkfail.config import ConfigError, DEFAULT_CONFIG, deep_merge, load_config
-from linkfail.data import DataError, Standardizer, expand_columns, prepare_dataset
+from linkfail.data import DataError, Standardizer, expand_columns, localize_spans, prepare_dataset
 
 
 def data_cfg(**changes):
@@ -92,6 +92,17 @@ def test_prediction_mode_needs_no_label_column():
     df = pd.DataFrame({"f": [0.0, 1.0]})
     out = prepare_dataset(df, data_cfg(feature_columns=["f"]), with_labels=False)
     assert out.y is None and len(out.X) == 2
+
+
+def test_localization_returns_span_with_largest_adverse_deviation():
+    """CHECK: the diagnostic names the span that is furthest below its baseline."""
+    df = pd.DataFrame({"gain_01": [9.5], "gain_02": [7.0],
+                       "target_01": [10.0], "target_02": [10.0]})
+    cfg = data_cfg(derived_features=[{"name": "gain_diff", "minuend": "gain_*",
+                                      "subtrahend": "target_*"}])
+    result = localize_spans(df, cfg)
+    assert result.loc[0, "suspected_span"] == "span_02"
+    assert result.loc[0, "localization_score"] == pytest.approx(3.0)
 
 
 def test_standardizer_uses_train_statistics():

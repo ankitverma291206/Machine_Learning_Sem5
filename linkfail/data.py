@@ -265,7 +265,54 @@ def prepare_dataset(df, data_cfg, with_labels=True):
 
 
 # ===========================================================================
-# PART 5 - RESCALING THE NUMBERS
+# PART 5 - FINDING THE MOST LIKELY TROUBLESOME SPAN
+# ===========================================================================
+def localize_spans(df, data_cfg, kept_index=None):
+    """Rank spans by their negative deviation from their configured baseline.
+
+    The classifier intentionally sums span deviations into link-level features.  This
+    helper keeps those same per-span differences long enough to answer the operational
+    follow-up: *which span contributed most to the bad link?*  A positive score means
+    a larger adverse deviation.  It is a diagnostic ranking, not a separately trained
+    fault-location classifier.
+    """
+    if not data_cfg["derived_features"]:
+        raise DataError("Localization requires at least one data.derived_features entry.")
+
+    df = df.copy()
+    if data_cfg["sort_by"]:
+        df = df.sort_values(data_cfg["sort_by"], kind="stable")
+    plan = resolve_feature_plan(df.columns, data_cfg)
+    derived = [p for p in plan if p["minus"] is not None]
+    raw_cols = sorted({c for p in derived for c in p["plus"] + p["minus"]})
+    df[raw_cols] = df[raw_cols].apply(pd.to_numeric, errors="coerce").astype(float)
+
+    if data_cfg["missing"] == "interpolate":
+        df[raw_cols] = df[raw_cols].interpolate(method="linear", limit_direction="both")
+    elif data_cfg["missing"] == "median":
+        df[raw_cols] = df[raw_cols].fillna(df[raw_cols].median())
+
+    if kept_index is not None:
+        df = df.loc[df.index.intersection(kept_index)]
+        # Restore the prediction output's row order, even when input was time-sorted.
+        df = df.reindex(kept_index)
+
+    scores = np.zeros(len(df), dtype=float)
+    labels = np.full(len(df), "", dtype=object)
+    for p in derived:
+        diffs = df[p["plus"]].to_numpy() - df[p["minus"]].to_numpy()
+        adverse = np.maximum(-diffs, 0.0)  # both paper features use negative = worse
+        for position, (plus, minus) in enumerate(zip(p["plus"], p["minus"])):
+            suffix = plus.rsplit("_", 1)[-1]
+            span = f"span_{suffix}" if minus.rsplit("_", 1)[-1] == suffix else f"pair_{position + 1}"
+            wins = adverse[:, position] > scores
+            labels[wins] = span
+            scores = np.maximum(scores, adverse[:, position])
+    return pd.DataFrame({"suspected_span": labels, "localization_score": scores}, index=df.index)
+
+
+# ===========================================================================
+# PART 6 - RESCALING THE NUMBERS
 # ===========================================================================
 class Standardizer:
     """
