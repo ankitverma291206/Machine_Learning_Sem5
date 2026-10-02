@@ -1,0 +1,13 @@
+# Template: a dataset whose label column holds several failure types, e.g. the public
+# Mendeley "optical soft failure" data with classes no-failure / ECL / EDFA / NLI.
+# We collapse it to the paper's binary task: healthy vs. anything else.
+# NOTE: column names below are placeholders - run `python -m linkfail inspect --data FILE`
+# and replace them with the real ones from your file.
+data:
+  label_column: failure_class
+  healthy_labels: ["no-failure"]      # everything else counts as "not healthy"
+  feature_columns: [osnr, ber, received_power]
+  missing: median
+models: [logistic_regression, gda, linear_svm]
+model_params:
+  linear_svm: {C: 1.0}

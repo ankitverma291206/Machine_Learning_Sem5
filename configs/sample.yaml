@@ -1,0 +1,20 @@
+# Config for the bundled synthetic dataset (data/sample/sample_link_data.csv).
+# Shape: one row per 2-minute bin; 19 spans x {amp_gain, target_gain, span_loss,
+# target_span_loss} plus an OSNR reading. This mirrors Eq. (1) and Eq. (2) of the paper.
+data:
+  # Label: a link is "not healthy" when OSNR drops below 20 dB.
+  label_from_threshold:
+    column: osnr_db
+    below: 20.0
+
+  # Features: sum over the 19 spans of the per-span difference to its baseline.
+  derived_features:
+    - name: X1_amp_gain_diff          # sum(amp_gain - target_gain)
+      minuend: "amp_gain_*"
+      subtrahend: "target_gain_*"
+    - name: X2_span_loss_diff         # sum(target_span_loss - span_loss)
+      minuend: "target_span_loss_*"
+      subtrahend: "span_loss_*"
+
+  missing: interpolate                # linear interpolation, as in the paper
+  sort_by: timestamp                  # interpolate along time

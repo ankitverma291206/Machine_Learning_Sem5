@@ -1,0 +1,9 @@
+# Template: your CSV already contains the final feature columns and a 0/1 label.
+# Copy this file, change the column names, and run:
+#   python -m linkfail train --data my_data.csv --config configs/already_engineered.yaml
+data:
+  feature_columns: [X1, X2]           # numeric columns the model should use
+  label_column: label                 # 0 = healthy, 1 = not healthy
+split:
+  test_size: 0.25
+  seed: 42

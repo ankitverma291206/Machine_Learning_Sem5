@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/
+
+# Training outputs (regenerate with `python -m linkfail train ...`)
+runs/
+
+# Your own datasets stay local. Only the bundled sample is tracked.
+data/*
+!data/sample/
+!data/README.md
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
