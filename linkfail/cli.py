@@ -28,7 +28,7 @@ from sklearn.model_selection import train_test_split    # splits rows into "stud
 
 from . import __version__
 from .config import ConfigError, deep_merge, load_config
-from .data import DataError, Standardizer, load_table, prepare_dataset
+from .data import DataError, Standardizer, load_table, localize_spans, prepare_dataset
 from .evaluate import compute_metrics, write_report
 from .models import build_model
 from .plotting import (plot_confusion_matrices, plot_decision_boundaries,
@@ -203,6 +203,12 @@ def cmd_predict(args):
     out = pd.DataFrame({"row_index": prepared.kept_index,                # which row of YOUR file this is
                         "unhealthy_score": score.round(5),
                         "prediction": np.where(score >= 0.5, "not healthy", "healthy")})
+    if args.localize:
+        locations = localize_spans(df, cfg["data"], prepared.kept_index)
+        # A location is useful only for an alerted link; leave healthy rows unlabelled.
+        unhealthy = score >= 0.5
+        out["suspected_span"] = np.where(unhealthy, locations["suspected_span"].to_numpy(), "")
+        out["localization_score"] = np.where(unhealthy, locations["localization_score"].to_numpy(), 0.0).round(5)
     out.to_csv(args.output, index=False)
     flagged = int((score >= 0.5).sum())
     print(f"Model '{name}': {flagged} of {len(out)} rows flagged as not healthy -> {args.output}")
@@ -263,6 +269,8 @@ def build_parser():
     sp.add_argument("--data", required=True)
     sp.add_argument("--output", default="predictions.csv")
     sp.add_argument("--model-name", help="which of the trained models to use")
+    sp.add_argument("--localize", action="store_true",
+                    help="add the most adverse derived-feature span for each alerted row")
     sp.set_defaults(func=cmd_predict)
 
     # --- demo ---
