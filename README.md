@@ -200,3 +200,67 @@ Learning*, Stanford University.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+## Random Forest Span-Level Extension
+
+The project includes a Random Forest extension that preserves individual
+span-level telemetry instead of reducing all 19 optical spans to two
+aggregated features.
+
+### Feature Representation
+
+The original baseline uses:
+
+- `X1_amp_gain_diff`
+- `X2_span_loss_diff`
+
+The Random Forest extension retains:
+
+- 19 amplifier-gain deviation features
+- 19 span-loss deviation features
+
+This gives a total of **38 span-level features**.
+
+### Dataset and Experimental Setup
+
+- Synthetic optical-network telemetry
+- 19 optical spans
+- 5,000 samples used in the final experiment
+- 3,400 healthy samples
+- 1,600 not-healthy samples
+- 75% training / 25% testing split
+- Random seed: 42
+- A link is labelled not healthy when `OSNR < 20 dB`
+
+### Test Results
+
+| Model | Accuracy | Precision | Recall | F1-score | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| Logistic Regression | 98.32% | 97.73% | 97.00% | 97.37% | 99.78% |
+| GDA | 95.28% | 99.71% | 85.50% | 92.06% | 99.78% |
+| Linear SVM | 98.56% | 97.51% | 98.00% | 97.76% | 99.77% |
+| Random Forest | 97.92% | 93.90% | **100.00%** | 96.85% | 99.65% |
+
+Random Forest achieved **100% recall** on the test split, meaning that no
+unhealthy link in the test set was missed. This came at the cost of more
+false-positive predictions compared with the linear classifiers.
+
+### Failure Localization
+
+Random Forest is used for link-health prediction.
+
+When a link is predicted as unhealthy, localization uses the individual
+span deviations to identify the span showing the strongest adverse
+amplifier-gain and span-loss deviation.
+
+The localization score is therefore a diagnostic deviation score rather
+than a probability.
+
+### Run the Random Forest Extension
+
+First generate the demonstration dataset and baseline results:
+
+```bash
+python -m linkfail demo --rows 5000
