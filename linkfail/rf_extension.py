@@ -183,6 +183,12 @@ def calculate_metrics(
 ):
     """Return standard binary-classification metrics."""
 
+    both_classes = len(
+        np.unique(
+            y_true,
+        )
+    ) == 2
+
     return {
         "accuracy": float(
             accuracy_score(
@@ -211,13 +217,23 @@ def calculate_metrics(
                 zero_division=0,
             )
         ),
-        "roc_auc": float(
-            roc_auc_score(
-                y_true,
-                y_probability,
+        "roc_auc": (
+            float(
+                roc_auc_score(
+                    y_true,
+                    y_probability,
+                )
             )
+            if both_classes
+            else None
         ),
     }
+
+
+def _format_optional_metric(value):
+    """Format a metric that may be undefined for one-class data."""
+
+    return "n/a" if value is None else f"{value:.4f}"
 
 
 def save_confusion_matrix(
@@ -391,7 +407,9 @@ def load_baseline_results(
                 ),
                 "roc_auc": float(
                     test["roc_auc"]
-                ),
+                )
+                if test.get("roc_auc") is not None
+                else None,
             }
         )
 
@@ -517,7 +535,7 @@ span-level information.
 - Precision: {metrics["precision"]:.4f}
 - Recall: {metrics["recall"]:.4f}
 - F1-score: {metrics["f1"]:.4f}
-- ROC-AUC: {metrics["roc_auc"]:.4f}
+- ROC-AUC: {_format_optional_metric(metrics["roc_auc"])}
 
 ## Model comparison
 
@@ -616,6 +634,12 @@ def train_random_forest(
         f"{int((y == 1).sum())}"
     )
 
+    if len(np.unique(y)) < 2:
+        raise ValueError(
+            "After labelling, only one class remains. "
+            "Check the OSNR threshold or input data."
+        )
+
     # Same split parameters as the baseline:
     # 75% train, 25% test, seed 42, stratified.
     train_indices, test_indices = (
@@ -710,7 +734,7 @@ def train_random_forest(
 
     print(
         f"ROC-AUC  : "
-        f"{metrics['roc_auc']:.4f}"
+        f"{_format_optional_metric(metrics['roc_auc'])}"
     )
 
     # Save model bundle
